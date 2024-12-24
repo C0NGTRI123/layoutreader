@@ -20,6 +20,19 @@ class DataCollator:
         # clip bbox and labels to max length, build input_ids and attention_mask
         for feature in features:
             _bbox = feature["source_boxes"]
+            # convert from [x1, y1, x2, y2] to polygon 8 points
+            _bbox = [
+                [
+                    _bbox[0],
+                    _bbox[1],
+                    _bbox[2],
+                    _bbox[1],
+                    _bbox[2],
+                    _bbox[3],
+                    _bbox[0],
+                    _bbox[3],
+                ]
+            ]
             if len(_bbox) > MAX_LEN:
                 _bbox = _bbox[:MAX_LEN]
             _labels = feature["target_index"]
@@ -35,7 +48,7 @@ class DataCollator:
 
         # add CLS and EOS tokens
         for i in range(len(bbox)):
-            bbox[i] = [[0, 0, 0, 0]] + bbox[i] + [[0, 0, 0, 0]]
+            bbox[i] = [[0, 0, 0, 0, 0, 0, 0, 0]] + bbox[i] + [[0, 0, 0, 0, 0, 0, 0, 0]]
             labels[i] = [-100] + labels[i] + [-100]
             input_ids[i] = [CLS_TOKEN_ID] + input_ids[i] + [EOS_TOKEN_ID]
             attention_mask[i] = [1] + attention_mask[i] + [1]
@@ -43,7 +56,7 @@ class DataCollator:
         # padding to max length
         max_len = max(len(x) for x in bbox)
         for i in range(len(bbox)):
-            bbox[i] = bbox[i] + [[0, 0, 0, 0]] * (max_len - len(bbox[i]))
+            bbox[i] = bbox[i] + [[0, 0, 0, 0, 0, 0, 0, 0]] * (max_len - len(bbox[i]))
             labels[i] = labels[i] + [-100] * (max_len - len(labels[i]))
             input_ids[i] = input_ids[i] + [EOS_TOKEN_ID] * (max_len - len(input_ids[i]))
             attention_mask[i] = attention_mask[i] + [0] * (
@@ -64,7 +77,7 @@ class DataCollator:
 
 
 def boxes2inputs(boxes: List[List[int]]) -> Dict[str, torch.Tensor]:
-    bbox = [[0, 0, 0, 0]] + boxes + [[0, 0, 0, 0]]
+    bbox = [[0, 0, 0, 0, 0, 0, 0, 0]] + boxes + [[0, 0, 0, 0, 0, 0, 0, 0]]
     input_ids = [CLS_TOKEN_ID] + [UNK_TOKEN_ID] * len(boxes) + [EOS_TOKEN_ID]
     attention_mask = [1] + [1] * len(boxes) + [1]
     return {
